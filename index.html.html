@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BLACKBOX AI – Video Explainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;500;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#05060d;--blue:#2f6bff;--purple:#a64dff;--ink:#f4f6ff;--mut:#8f97b8;--line:rgba(120,140,255,.22);--panel:rgba(14,16,34,.82);
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:#000;overflow:hidden;font-family:Sora,system-ui,sans-serif;color:var(--ink)}
+body{display:flex;align-items:center;justify-content:center}
+#stage{position:relative;aspect-ratio:16/9;width:min(100vw,calc((100vh - 8px)*16/9));overflow:hidden;background:radial-gradient(60% 80% at 15% 10%,rgba(47,107,255,.18),transparent 60%),radial-gradient(60% 80% at 90% 100%,rgba(166,77,255,.18),transparent 60%),var(--bg);font-size:10px}
+#stage::before{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:4em 4em;opacity:.28;mask-image:radial-gradient(80% 80% at 50% 50%,#000,transparent);-webkit-mask-image:radial-gradient(80% 80% at 50% 50%,#000,transparent)}
+canvas{position:absolute;inset:0;width:100%;height:100%}
+.scene{position:absolute;inset:0;padding:4.5em 6em 9em;opacity:0;visibility:hidden;transition:opacity .7s,visibility .7s}
+.scene.active{opacity:1;visibility:visible}
+[data-at]{opacity:0;transform:translateY(1.2em);transition:opacity .8s cubic-bezier(.2,.8,.2,1),transform .8s cubic-bezier(.2,.8,.2,1)}
+[data-at].on{opacity:1;transform:none}
+.mono{font-family:'JetBrains Mono',monospace}
+h2{font-size:3.4em;font-weight:800;margin:0 0 .5em;letter-spacing:-.02em;line-height:1.1}
+.grad{background:linear-gradient(90deg,var(--blue),var(--purple));-webkit-background-clip:text;background-clip:text;color:transparent}
+/* S1 */
+#s1{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;perspective:90em}
+.tag{font-size:2em;font-weight:300;letter-spacing:.7em;margin-bottom:1.2em;text-indent:.7em}
+.logo{font-size:9em;font-weight:800;letter-spacing:-.03em;line-height:1;transform:rotateX(75deg) scale(.7);transform-origin:50% 100%;filter:blur(1.5em);opacity:0;transition:all 1.8s cubic-bezier(.2,.8,.2,1);text-shadow:0 0 .4em rgba(47,107,255,.6)}
+.logo.on{transform:none;filter:none;opacity:1}
+.logo b{font-weight:800;color:var(--purple)}
+/* S2 */
+.row{display:flex;gap:5em;align-items:center;height:calc(100% - 7em)}
+.laptop{flex:0 0 40%;position:relative}
+.screen{background:var(--panel);border:.2em solid #2a2f55;border-radius:1em 1em 0 0;padding:1.4em;aspect-ratio:16/10;box-shadow:0 0 5em rgba(47,107,255,.3)}
+.base{height:1em;background:linear-gradient(#2a2f55,#12142a);border-radius:0 0 2em 2em;margin:0 -2em}
+.ln{height:.9em;border-radius:.45em;background:linear-gradient(90deg,var(--blue),var(--purple));opacity:.7;margin:.7em 0;animation:ln 3s ease-in-out infinite}
+.ln:nth-child(2n){animation-delay:.6s;opacity:.4}.ln:nth-child(3n){animation-delay:1.2s}
+@keyframes ln{50%{transform:scaleX(.7);transform-origin:left}}
+.bub{margin-top:1.6em;font-size:1.3em;padding:.7em 1em;border-radius:1em;background:rgba(47,107,255,.2);border:1px solid var(--blue)}
+.tok{position:absolute;font-size:1.5em;color:var(--purple);animation:fl 5s ease-in-out infinite}
+@keyframes fl{50%{translate:0 -1.2em}}
+.diag{flex:1;display:flex;flex-direction:column;gap:1.4em}
+.node{display:flex;align-items:center;gap:1.4em;padding:1.4em 1.8em;border:1px solid var(--line);border-radius:1.2em;background:var(--panel);font-size:1.7em}
+.node small{display:block;color:var(--mut);font-size:.65em;margin-top:.2em;font-weight:300}
+.node.ai{border-color:var(--purple);box-shadow:0 0 3em rgba(166,77,255,.35)}
+.arr{align-self:center;font-size:1.8em;color:var(--blue);margin:-.6em 0}
+/* S3 */
+.steps{flex:0 0 36%;margin:0;padding:0;list-style:none}
+.steps li{display:flex;gap:1em;align-items:center;font-size:1.7em;padding:.55em .8em;border-radius:.8em;color:var(--mut);transition:all .5s}
+.steps li i{font-style:normal;width:1.7em;height:1.7em;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:.8em;flex:none}
+.steps li.cur{color:var(--ink);background:rgba(47,107,255,.18)}
+.steps li.cur i{background:var(--blue);border-color:var(--blue)}
+.steps li.done{color:#b7c3ff}
+.win{flex:1;position:relative;height:100%;max-height:34em;border:1px solid var(--line);border-radius:1.2em;background:var(--panel);overflow:hidden;box-shadow:0 0 5em rgba(47,107,255,.2)}
+.bar{display:flex;align-items:center;gap:.6em;padding:.9em 1.2em;border-bottom:1px solid var(--line);font-size:1.3em}
+.bar span{width:.7em;height:.7em;border-radius:50%;background:#3a3f6b}
+.url{margin-left:1em;flex:1;background:#0a0c1e;border-radius:.6em;padding:.4em .9em;color:var(--mut)}
+.wb{padding:2.2em;font-size:1.6em;animation:fi .6s}
+@keyframes fi{from{opacity:0;transform:scale(.97)}}
+.btn{display:inline-block;background:linear-gradient(90deg,var(--blue),var(--purple));padding:.6em 1.4em;border-radius:.7em;font-weight:700;margin-top:.8em}
+.fld{background:#0a0c1e;border:1px solid var(--line);border-radius:.6em;padding:.6em .9em;margin:.5em 0;color:var(--mut)}
+.chips{display:flex;flex-wrap:wrap;gap:.6em;margin-top:.8em}
+.chip{padding:.5em 1em;border:1px solid var(--line);border-radius:2em}.chip.hl{border-color:var(--purple);background:rgba(166,77,255,.25);box-shadow:0 0 1.5em rgba(166,77,255,.5)}
+.cur-mouse{position:absolute;width:1.8em;height:1.8em;left:50%;top:60%;transition:left 1.2s cubic-bezier(.5,0,.2,1),top 1.2s cubic-bezier(.5,0,.2,1);z-index:3;filter:drop-shadow(0 0 .5em #fff)}
+.note{position:absolute;right:1.2em;bottom:.8em;font-size:1.1em;color:var(--mut)}
+/* S4 */
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:1.6em}
+.card{padding:1.5em;border:1px solid var(--line);border-radius:1.2em;background:var(--panel);min-height:14em;transition:border-color .5s,box-shadow .5s}
+.card.hot{border-color:var(--blue);box-shadow:0 0 3em rgba(47,107,255,.45)}
+.card h3{margin:.8em 0 .4em;font-size:1.7em}.card p{margin:0;font-size:1.25em;line-height:1.5;color:var(--mut)}
+.viz{height:3em;position:relative;border-radius:.6em;background:#0a0c1e;overflow:hidden}
+.viz::before,.viz::after{content:"";position:absolute;left:.8em;height:.5em;border-radius:.3em;background:var(--blue)}
+.v1::before{top:.8em;width:60%;animation:w 2s infinite}.v1::after{top:1.8em;width:35%;background:var(--purple);animation:w 2s .5s infinite}
+@keyframes w{0%{width:0}60%,100%{width:60%}}
+.v2::before{top:1.2em;width:80%;background:linear-gradient(90deg,#222,var(--purple),#222);background-size:200%;animation:sw 2s linear infinite}
+@keyframes sw{to{background-position:-200%}}
+.v3::before{top:1.2em;width:2em;height:.7em;animation:bug 2.4s infinite}
+@keyframes bug{0%,45%{background:#ff4d6d;width:2em}55%,100%{background:#3ddc97;width:70%}}
+.v4::before{top:.8em;width:1em;height:1.4em;border-radius:.2em;animation:pop 2s infinite}.v4::after{left:2.4em;top:.8em;width:1em;height:1.4em;border-radius:.2em;background:var(--purple);animation:pop 2s .6s infinite}
+@keyframes pop{0%,100%{transform:scale(0)}40%,80%{transform:scale(1)}}
+.v5::before{top:.7em;width:40%;border-radius:1em;height:.8em;animation:pulse 1.6s infinite}.v5::after{top:1.8em;left:45%;width:45%;height:.8em;border-radius:1em;background:var(--purple);animation:pulse 1.6s .8s infinite}
+@keyframes pulse{50%{opacity:.25}}
+.v6::before{left:0;top:0;width:100%;height:.25em;border-radius:0;background:#fff;box-shadow:0 0 1em #fff;animation:scan 2s linear infinite}
+@keyframes scan{to{top:100%}}
+.v7::before{left:20%;top:1em;width:1em;height:1em;border-radius:50%;animation:orb 3s linear infinite}.v7::after{left:60%;top:1em;width:1em;height:1em;border-radius:50%;background:var(--purple);animation:orb 3s -1.5s linear infinite}
+@keyframes orb{50%{transform:translateX(3em) scale(1.4)}}
+.fnote{position:absolute;left:6em;bottom:9.5em;font-size:1.2em;color:var(--mut)}
+/* S5 */
+.demo{display:grid;grid-template-columns:1.15fr 1fr;gap:2em;height:calc(100% - 6.5em)}
+.pane{border:1px solid var(--line);border-radius:1.2em;background:var(--panel);padding:1.4em;font-size:1.35em;overflow:hidden}
+.pane h4{margin:0 0 .6em;color:var(--mut);font-weight:500;font-size:.85em}
+#code{white-space:pre;font-size:.82em;line-height:1.55;color:#cdd6ff}
+#code i{font-style:normal}.t{color:#7aa2ff}.a{color:#c792ff}.s{color:#7de3b0}.p{color:#ffb86b}
+.caret::after{content:"▍";color:var(--purple);animation:pulse 1s infinite}
+.prev{background:#fff;color:#111;border-radius:.8em;padding:2em 1em;text-align:center;font-family:system-ui,sans-serif}
+.prev b{font-size:1.5em}.prev span{display:block;color:#555;margin:.5em 0 1em;font-size:.9em}.prev u{text-decoration:none;background:var(--blue);color:#fff;padding:.5em 1.2em;border-radius:.5em}
+.cmp{margin-top:1em}.cmp div{margin:.6em 0;font-size:.95em}.cmp s{display:block;height:.9em;border-radius:.5em;margin-top:.3em;text-decoration:none}
+.m s{background:#6b6f93;width:0;transition:width 2.5s}.m.on s{width:100%}.ai2 s{background:linear-gradient(90deg,var(--blue),var(--purple));width:0;transition:width 1.2s 1s}.ai2.on s{width:12%}
+/* S6 */
+#s6{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.kw{position:absolute;top:30%;left:0;right:0;font-size:6em;font-weight:800;letter-spacing:-.02em}
+.warn{position:absolute;top:50%;left:12%;right:12%;font-size:1.9em;color:var(--mut);line-height:1.6}
+.close{position:absolute;top:66%;left:10%;right:10%;font-size:2.3em;font-weight:500;line-height:1.5}
+.endlogo{position:absolute;top:10%;left:0;right:0;font-size:3em;font-weight:800}
+/* UI */
+#sub{position:absolute;left:8%;right:8%;bottom:4.2em;text-align:center;font-size:1.9em;line-height:1.45;min-height:2.9em;text-shadow:0 .1em .6em #000;z-index:5}
+#sub span{background:rgba(5,6,13,.7);padding:.1em .5em;border-radius:.4em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+#ctl{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:1em;padding:1em 2em;z-index:6;font-size:1.3em}
+#ctl button{all:unset;cursor:pointer;padding:.4em .9em;border:1px solid var(--line);border-radius:.6em;background:rgba(14,16,34,.8)}
+#ctl button:focus-visible{outline:2px solid var(--purple)}
+#prog{flex:1;height:.5em;background:#1a1d3a;border-radius:1em;cursor:pointer;position:relative}
+#fill{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:1em;background:linear-gradient(90deg,var(--blue),var(--purple))}
+#tm{color:var(--mut);min-width:6em;text-align:right}
+#start{position:absolute;inset:0;z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.4em;background:rgba(5,6,13,.88);cursor:pointer;font-size:1em}
+#start b{font-size:4em}#start span{font-size:1.6em;color:var(--mut)}
+#start em{font-style:normal;font-size:1.8em;padding:.6em 1.8em;border-radius:3em;background:linear-gradient(90deg,var(--blue),var(--purple));font-weight:700}
+@media (prefers-reduced-motion:reduce){.ln,.tok,.viz::before,.viz::after{animation:none}}
+</style>
+</head>
+<body>
+<div id="stage">
+<canvas id="cv"></canvas>
+
+<section class="scene" id="s1">
+ <div class="tag" data-at="1.2">THE FUTURE OF AI CODING</div>
+ <div class="logo" data-at="3.6">BLACKBOX <b>AI</b></div>
+</section>
+
+<section class="scene" id="s2">
+ <h2 data-at=".3">Apa itu <span class="grad">BLACKBOX AI</span>?</h2>
+ <div class="row">
+  <div class="laptop" data-at="1.2">
+   <div class="screen"><div class="ln" style="width:70%"></div><div class="ln" style="width:90%"></div><div class="ln" style="width:55%"></div><div class="ln" style="width:80%"></div><div class="bub mono">Jelaskan fungsi ini…</div></div><div class="base"></div>
+   <span class="tok mono" style="left:-2%;top:-6%">{ }</span><span class="tok mono" style="right:-4%;top:10%;animation-delay:1s">&lt;/&gt;</span><span class="tok mono" style="left:6%;bottom:-18%;animation-delay:2s">const</span><span class="tok mono" style="right:8%;bottom:-16%;animation-delay:3s">fn()</span>
+  </div>
+  <div class="diag">
+   <div class="node" data-at="4"><div>Pengguna<small>menulis instruksi atau pertanyaan</small></div></div>
+   <div class="arr" data-at="6">↓</div>
+   <div class="node ai" data-at="7"><div>BLACKBOX AI<small>memahami, menghasilkan, dan memperbaiki kode</small></div></div>
+   <div class="arr" data-at="11">↓</div>
+   <div class="node" data-at="12"><div>Proses coding<small>kode siap dipelajari, diuji, dan dikembangkan</small></div></div>
+  </div>
+ </div>
+</section>
+
+<section class="scene" id="s3">
+ <h2 data-at=".3">Cara <span class="grad">menggunakan</span></h2>
+ <div class="row" style="height:calc(100% - 6em)">
+  <ol class="steps" id="steps"></ol>
+  <div class="win" data-at=".8">
+   <div class="bar"><span></span><span></span><span></span><div class="url mono" id="url"></div></div>
+   <div class="wb" id="wb"></div>
+   <svg class="cur-mouse" id="mouse" viewBox="0 0 24 24"><path d="M3 2l7 19 3-8 8-3z" fill="#fff" stroke="#05060d" stroke-width="1.2"/></svg>
+   <div class="note">Ilustrasi antarmuka, bukan tangkapan layar resmi</div>
+  </div>
+ </div>
+</section>
+
+<section class="scene" id="s4">
+ <h2 data-at=".3">Fitur-fitur <span class="grad">BLACKBOX AI</span></h2>
+ <div class="cards" id="cards"></div>
+ <div class="fnote" data-at="2">Ketersediaan fitur dapat berubah. Cek situs resmi untuk versi terbaru.</div>
+</section>
+
+<section class="scene" id="s5">
+ <h2 data-at=".3" style="font-size:2.8em">Contoh <span class="grad">penggunaan</span></h2>
+ <div class="demo">
+  <div style="display:flex;flex-direction:column;gap:1.4em;min-height:0">
+   <div class="pane" data-at=".8"><h4>Prompt</h4><div id="prompt" class="caret"></div></div>
+   <div class="pane" style="flex:1" data-at="6"><h4>Kode dihasilkan</h4><div id="code" class="mono"></div></div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:1.4em">
+   <div class="pane" data-at="16.5"><h4>Hasil di aplikasi</h4><div class="prev"><b>Halo, Dunia</b><span>Halaman sederhana, modern, responsif.</span><u>Mulai</u></div></div>
+   <div class="pane cmp" data-at="19"><h4>Sebelum dan sesudah (ilustrasi)</h4>
+    <div class="m" id="cm">Manual<s></s></div><div class="ai2" id="ca">Dengan bantuan AI<s></s></div></div>
+  </div>
+ </div>
+</section>
+
+<section class="scene" id="s6">
+ <div class="kw grad" data-at="1" data-to="4">Faster Workflow</div>
+ <div class="kw grad" data-at="4" data-to="7">Smart Assistance</div>
+ <div class="kw grad" data-at="7" data-to="10">Coding Productivity</div>
+ <div class="kw grad" data-at="10" data-to="13">AI Innovation</div>
+ <div class="warn" data-at="13.2" data-to="19.5">Hasil dari AI tetap perlu diperiksa dan diuji agar sesuai kebutuhan.</div>
+ <div class="close" data-at="14.5" data-to="19.5"></div>
+ <div class="endlogo" data-at="19.6" style="display:none"></div>
+</section>
+
+<div id="sub"></div>
+<div id="ctl">
+ <button id="bp" aria-label="Putar atau jeda">Jeda</button><button id="br" aria-label="Ulangi dari awal">Ulang</button><button id="bv" aria-pressed="false" title="Suara narasi memakai suara bawaan browser">Suara: mati</button>
+ <div id="prog" role="slider" aria-label="Posisi video"><div id="fill"></div></div><div id="tm" class="mono">0:00 / 2:35</div><button id="bf" aria-label="Layar penuh">Layar penuh</button>
+</div>
+<div id="start"><b>BLACKBOX <span class="grad" style="font-size:1em;color:inherit">AI</span></b><span>Video explainer interaktif, sekitar 2,5 menit</span><em>Putar</em></div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const SC=[
+ {d:10,n:"Di era perkembangan teknologi yang semakin pesat, Artificial Intelligence hadir untuk membantu manusia menyelesaikan berbagai pekerjaan dengan lebih cepat dan efisien. Salah satu platform AI yang menarik untuk dikenal adalah BLACKBOX AI."},
+ {d:20,n:"BLACKBOX AI merupakan platform berbasis kecerdasan buatan yang dirancang untuk membantu pengembang dan pengguna dalam berbagai aktivitas pemrograman. Platform ini menyediakan kemampuan AI untuk memahami kode, menghasilkan kode, menyelesaikan masalah pemrograman, dan meningkatkan produktivitas kerja."},
+ {d:35,n:"Untuk menggunakan BLACKBOX AI, pertama kita dapat mengunjungi website resminya. Setelah itu, lakukan registrasi atau login. Selanjutnya, kita bisa mengenali dashboard dan memilih fitur sesuai kebutuhan. Masukkan instruksi atau pertanyaan yang ingin kita sampaikan, kemudian AI akan memproses dan memberikan hasil yang dapat kita evaluasi serta gunakan."},
+ {d:45,n:"BLACKBOX AI memiliki beberapa kemampuan utama, seperti asisten coding, penjelasan kode, debugging, pembuatan kode, dan chat AI. Tergantung versi yang tersedia, ada pula fitur mengubah gambar atau desain menjadi kode, serta agen AI untuk membantu pengembangan proyek."},
+ {d:25,n:"Sebagai contoh, kita dapat meminta BLACKBOX AI untuk membuat sebuah halaman website sederhana. Cukup tuliskan instruksi yang diinginkan, kemudian AI akan membantu menghasilkan kode yang bisa kita pelajari, modifikasi, dan kembangkan."},
+ {d:20,n:"BLACKBOX AI dapat menjadi alat bantu yang bermanfaat dalam pengembangan software. Namun, hasil yang diberikan AI tetap perlu diperiksa dan diuji agar sesuai dengan kebutuhan. Teknologi terus berkembang. Manfaatkan Artificial Intelligence untuk belajar, berkreasi, dan menciptakan inovasi baru."}
+];
+let acc=0;SC.forEach((s,i)=>{s.s=acc;acc+=s.d;s.el=$('#s'+(i+1));s.q=[...s.el.querySelectorAll('[data-at]')];
+ const sents=s.n.match(/[^.]+\./g).map(x=>x.trim());const tot=sents.reduce((a,x)=>a+x.length,0);let c=.3;
+ s.sub=sents.map(x=>{const len=x.length/tot*(s.d*.9);const o={a:c,b:c+len,t:x};c+=len;return o});});
+const TOTAL=acc;
+const fmt=x=>Math.floor(x/60)+':'+String(Math.floor(x%60)).padStart(2,'0');
+
+/* S3 */
+const STEPS=[
+ ["Buka website resmi","blackbox.ai",'<b style="font-size:1.6em">Bangun lebih cepat dengan AI</b><br><div class="btn">Mulai</div>',[50,62]],
+ ["Registrasi atau login","blackbox.ai/login",'<div class="fld">Email</div><div class="fld">Kata sandi</div><div class="btn">Masuk</div>',[30,66]],
+ ["Kenali dashboard","blackbox.ai/app",'<div class="chips"><span class="chip">Riwayat</span><span class="chip">Model</span><span class="chip">Pengaturan</span></div><p style="color:#8f97b8">Pilih area kerja dari menu.</p>',[12,40]],
+ ["Pilih fitur","blackbox.ai/app",'<div class="chips"><span class="chip">Chat</span><span class="chip hl">Builder</span><span class="chip">Vision</span><span class="chip">Agent</span></div>',[40,38]],
+ ["Masukkan prompt","blackbox.ai/app",'<div class="fld" style="color:#f4f6ff">Buatkan halaman web sederhana…</div><div class="btn">Kirim</div>',[78,62]],
+ ["Lihat hasil dari AI","blackbox.ai/app",'<div class="mono" style="font-size:.85em;color:#7aa2ff">&lt;section class="hero"&gt;<br>&nbsp;&nbsp;&lt;h1&gt;Halo&lt;/h1&gt;<br>&lt;/section&gt;</div>',[50,60]],
+ ["Gunakan, uji, dan sesuaikan","blackbox.ai/app",'<div class="chips"><span class="chip hl">Jalankan</span><span class="chip">Uji</span><span class="chip">Sesuaikan</span></div><p style="color:#8f97b8">Periksa hasilnya sebelum dipakai.</p>',[22,52]]
+];
+$('#steps').innerHTML=STEPS.map((s,i)=>`<li><i>${i+1}</i>${s[0]}</li>`).join('');
+let st3=-1;
+function s3(l){const k=Math.min(6,Math.floor(l/5));if(k===st3)return;st3=k;
+ $$('#steps li').forEach((e,i)=>{e.className=i===k?'cur':i<k?'done':''});
+ $('#url').textContent=STEPS[k][1];$('#wb').innerHTML=STEPS[k][2];
+ const m=$('#mouse');m.style.left=STEPS[k][3][0]+'%';m.style.top=STEPS[k][3][1]+'%';}
+
+/* S4 */
+const FT=[["AI Coding Assistant","Membantu menghasilkan kode dari instruksi."],["Code Explanation","Menjelaskan fungsi dan cara kerja kode."],["Code Debugging","Menemukan kesalahan dan menyarankan perbaikan."],["Code Generation","Membuat potongan kode sesuai kebutuhan."],["AI Chat","Bertanya dan berdiskusi soal pemrograman."],["Image to Code","Mengubah gambar atau desain menjadi kode, jika tersedia."],["AI Agent","Membantu tugas pengembangan proyek, sesuai fitur yang tersedia."]];
+$('#cards').innerHTML=FT.map((f,i)=>`<div class="card" data-at="${1+i*5.5}"><div class="viz v${i+1}"></div><h3>${f[0]}</h3><p>${f[1]}</p></div>`).join('');
+SC[3].q=[...SC[3].el.querySelectorAll('[data-at]')];
+function s4(l){$$('.card').forEach((c,i)=>{const a=1+i*5.5;c.classList.toggle('hot',l>=a&&l<a+5.5)})}
+
+/* S5 */
+const PR="Buatkan halaman website sederhana menggunakan HTML dan CSS dengan desain modern, responsive, dan minimalis.";
+const CODE=`<section class="hero">
+  <h1>Halo, Dunia</h1>
+  <p>Halaman sederhana.</p>
+  <a href="#" class="btn">Mulai</a>
+</section>
+<style>
+.hero{max-width:40rem;margin:auto;
+  padding:4rem 1rem;text-align:center}
+.btn{background:#2f6bff;color:#fff;
+  border-radius:.5rem}
+</style>`;
+const esc=x=>x.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function hl(x){return x.split('\n').map(L=>{let e=esc(L);
+ if(L.includes('<')){e=e.replace(/ (class|href)=/g,' <i class=a>$1</i>=').replace(/("[^"]*")/g,'<i class=s>$1</i>').replace(/(&lt;\/?)(\w+)/g,'$1<i class=t>$2</i>')}
+ else e=e.replace(/([a-z-]+):/g,'<i class=p>$1</i>:');return e}).join('\n')}
+function s5(l){const pn=Math.floor(Math.max(0,Math.min(1,(l-1.2)/5))*PR.length);$('#prompt').textContent=PR.slice(0,pn);
+ $('#prompt').classList.toggle('caret',l<7);
+ const cn=Math.floor(Math.max(0,Math.min(1,(l-7)/9))*CODE.length);$('#code').innerHTML=hl(CODE.slice(0,cn));
+ $('#code').classList.toggle('caret',cn<CODE.length);
+ $('#cm').classList.toggle('on',l>19.5);$('#ca').classList.toggle('on',l>19.5)}
+
+/* S6 */
+const CL="Teknologi terus berkembang. Manfaatkan Artificial Intelligence untuk belajar, berkreasi, dan menciptakan inovasi baru.";
+$('#s6 .close').textContent=CL;
+$('#s6 .endlogo').outerHTML='';
+const el6=document.createElement('div');el6.className='kw';el6.style.cssText='top:40%;font-size:7em';el6.dataset.at='19.6';el6.innerHTML='BLACKBOX <span class="grad">AI</span>';$('#s6').appendChild(el6);SC[5].q=[...SC[5].el.querySelectorAll('[data-at]')];
+
+/* engine */
+let t=0,playing=false,last=0,cur=-1,voice=false;
+function speak(i){if(!voice||!window.speechSynthesis)return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(SC[i].n);u.lang='id-ID';u.rate=1.0;speechSynthesis.speak(u)}
+function render(){const i=Math.max(0,SC.findIndex(s=>t>=s.s&&t<s.s+s.d));const s=SC[i];
+ if(i!==cur){SC.forEach((x,j)=>x.el.classList.toggle('active',j===i));cur=i;st3=-1;if(playing)speak(i)}
+ const l=t-s.s;
+ s.q.forEach(e=>{const a=+e.dataset.at,b=e.dataset.to?+e.dataset.to:1e9;e.classList.toggle('on',l>=a&&l<b)});
+ if(i===2)s3(l);if(i===3)s4(l);if(i===4)s5(l);
+ const sb=s.sub.find(x=>l>=x.a&&l<x.b);$('#sub').innerHTML=sb?`<span>${sb.t}</span>`:'';
+ $('#fill').style.width=(t/TOTAL*100)+'%';$('#tm').textContent=fmt(t)+' / '+fmt(TOTAL)}
+function frame(ts){if(playing){t+=(ts-last)/1000;if(t>=TOTAL){t=TOTAL-.05;setPlay(false)}}last=ts;render();requestAnimationFrame(frame)}
+function setPlay(p){playing=p;$('#bp').textContent=p?'Jeda':'Putar';if(window.speechSynthesis){if(p)speak(cur);else speechSynthesis.cancel()}}
+$('#bp').onclick=()=>{if(t>=TOTAL-.1)t=0;setPlay(!playing)};
+$('#br').onclick=()=>{t=0;cur=-1;setPlay(true)};
+$('#bv').onclick=()=>{voice=!voice;$('#bv').textContent='Suara: '+(voice?'nyala':'mati');$('#bv').setAttribute('aria-pressed',voice);if(voice&&playing)speak(cur);else if(window.speechSynthesis)speechSynthesis.cancel()};
+$('#bf').onclick=()=>{const d=document;d.fullscreenElement?d.exitFullscreen():d.documentElement.requestFullscreen&&d.documentElement.requestFullscreen()};
+$('#prog').onclick=e=>{const r=e.currentTarget.getBoundingClientRect();t=Math.max(0,Math.min(TOTAL-.1,(e.clientX-r.left)/r.width*TOTAL));cur=-1;if(playing)speak(0)};
+$('#start').onclick=()=>{$('#start').remove();setPlay(true)};
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&!$('#start')){e.preventDefault();$('#bp').click()}});
+function fit(){$('#stage').style.fontSize=($('#stage').clientWidth/96)+'px'}
+addEventListener('resize',fit);fit();
+/* particles */
+const cv=$('#cv'),cx=cv.getContext('2d');let P=[];
+function ps(){cv.width=cv.clientWidth;cv.height=cv.clientHeight;P=Array.from({length:70},()=>({x:Math.random()*cv.width,y:Math.random()*cv.height,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,r:Math.random()*1.6+.4,c:Math.random()<.5?'47,107,255':'166,77,255'}))}
+ps();addEventListener('resize',ps);
+const still=matchMedia('(prefers-reduced-motion:reduce)').matches;
+function dr(){cx.clearRect(0,0,cv.width,cv.height);P.forEach((p,i)=>{if(!still){p.x=(p.x+p.vx+cv.width)%cv.width;p.y=(p.y+p.vy+cv.height)%cv.height}
+ cx.fillStyle=`rgba(${p.c},.8)`;cx.beginPath();cx.arc(p.x,p.y,p.r*cv.width/900,0,7);cx.fill();
+ for(let j=i+1;j<P.length;j++){const q=P[j],d=Math.hypot(p.x-q.x,p.y-q.y);if(d<cv.width/10){cx.strokeStyle=`rgba(${p.c},${.18*(1-d/(cv.width/10))})`;cx.beginPath();cx.moveTo(p.x,p.y);cx.lineTo(q.x,q.y);cx.stroke()}}});requestAnimationFrame(dr)}
+dr();requestAnimationFrame(frame);
+</script>
+</body>
+</html>
